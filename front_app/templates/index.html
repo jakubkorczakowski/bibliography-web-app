@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <title>Bib-maker</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+            integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+            crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+            integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+            crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+            integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+            crossorigin="anonymous"></script>
+    <link href='https://fonts.googleapis.com/css?family=Crimson+Pro&subset=latin,latin-ext' rel='stylesheet'
+          type='text/css'>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
+    <!--    <script src="/scripts/sockets.js"></script>-->
+    <link href="/styles/style.css" rel="stylesheet" type="text/css">
+</head>
+
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #005b5b">
+    <a class="navbar-brand" href="#">Bib-maker</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mr-auto">
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('index') }}">Strona główna</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('login') }}">Logowanie</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('register') }}">Rejestracja</a>
+            </li>
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown"
+                   aria-haspopup="true" aria-expanded="false">
+                    Pliki
+                </a>
+                <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                    <a class="dropdown-item" href="{{ url_for('show_files') }}">Lista</a>
+                    <a class="dropdown-item" href="{{ url_for('add_file') }}">Dodawanie</a>
+                </div>
+            </li>
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown"
+                   aria-haspopup="true" aria-expanded="false">
+                    Pozycje bibliograficzne
+                </a>
+                <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                    <a class="dropdown-item" href="{{ url_for('show_bibliographies') }}">Lista</a>
+                    <a class="dropdown-item" href="{{ url_for('add_bibliography') }}">Dodawanie</a>
+                </div>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('logout') }}"> Wylogowywanie </a>
+            </li>
+        </ul>
+    </div>
+</nav>
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <br>
+            <br>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12 col-lg-6">
+            <section>
+                <h3>Wyszukaj i zapisz</h3>
+                <p>Przeszukuj swoje ulubione naukowe wyszukiwarki (w aplikacji i za pomocą naszych przydatnych
+                    rozszerzeń
+                    przeglądarki ) i ciesz się pobieraniem jednym kliknięciem, aby szybko dodawać odniesienia i
+                    pełnotekstowe
+                    pliki
+                    PDF do swojej biblioteki.
+                    Sprawdź nasz spersonalizowany silnik rekomendacji i powiązane kanały artykułów, aby upewnić się, że
+                    już
+                    nigdy
+                    nie przegapisz ważnego artykułu.</p>
+            </section>
+            <article>
+                <h3>Czas być bardziej zorganizowanym</h3>
+                <p>Pożegnaj się z bałaganem na pulpicie i folderami niesklasyfikowanych plików PDF.
+
+                    Dokumenty automatycznie identyfikują i dopasowują importowane artykuły, nie tylko z kompletnymi
+                    metadanymi,
+                    ale
+                    także z dostępnymi danymi uzupełniającymi, cytatami i pełnym tekstem (jeśli są dostępne).
+
+                    Co więcej? Użyj tagów, etykiet, ocen, inteligentnych kolekcji i folderów zegarka, aby utrzymać
+                    porządek
+                    na
+                    drodze.
+                </p>
+            </article>
+        </div>
+        <div class="col-md-12 col-lg-5">
+            <img src="/resources/shr.jpg" alt="Share" class="img-fluid">
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <article>
+                <h3>Cytuj szybciej dzięki Bib-maker</h3>
+                <p>
+                    Nasi użytkownicy UWIELBIAJĄ Bib-maker, ponieważ jest szybki, niezawodny i co najważniejsze - łatwy w
+                    użyciu!
+                    Po
+                    prostu dodaj dodatek Bib-maker do Word 2016, a będziesz mieć dostęp do całej biblioteki bezpośrednio
+                    z
+                    dokumentu
+                    Word.
+
+                    Wyszukaj odniesienia w swoich kolekcjach osobistych lub udostępnionych lub skorzystaj z naszej
+                    wbudowanej
+                    wyszukiwarki.
+                    APA, MLA, Chicago, IEEE, Nature ... wybieraj spośród ponad 9000 stylów cytowania wbudowanych w
+                    Bib-maker.
+                    Potrzebujesz czegoś konkretnego? Dostosuj swój własny styl!
+                    Bib-maker został stworzony do współpracy, więc po prostu prześlij swój dokument innym użytkownikom
+                    aplikacji
+                    Bib-maker, a oni będą mogli odebrać je tam, gdzie skończyłeś!</p>
+            </article>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <article>
+                <h3>Plany akademickie</h3>
+                <p>Wprowadzamy nowoczesne i elastyczne pakiety dostępu do naszej aplikacji.</p>
+            </article>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <caption> Plany</caption>
+            <thead class="thead-dark">
+            <tr>
+                <th scope="col">Typ planu</th>
+                <th scope="col">Plany dla małej grupy / laboratorium</th>
+                <th scope="col">Plany licencyjne działów i organizacji</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>Współpraca</td>
+                <td>Podstawowa współpraca</td>
+                <td>Zaawansowana współpraca</td>
+            </tr>
+            <tr>
+                <td>Synchronizacja</td>
+                <td>Synchronizacja między urządzeniami</td>
+                <td>Synchronizacja między urządzeniami</td>
+            </tr>
+            <tr>
+                <td>Integracja z Microsoft Word</td>
+                <td>Bib-maker dla Word</td>
+                <td>Bib-maker dla Word</td>
+            </tr>
+            <tr>
+                <td>Wyświetlanie plików PDF</td>
+                <td>Ulepszone przeglądanie plików PDF</td>
+                <td>Ulepszone przeglądanie plików PDF</td>
+            </tr>
+            <tr>
+                <td>Adnotacja PDF</td>
+                <td>Narzędzia do adnotacji PDF</td>
+                <td>Narzędzia do adnotacji PDF</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+
+</div>
+
+<footer class="pt-2 text-light fixed-bottom" style="background-color: #005b5b">
+
+    <div class="container-fluid">
+        <div class="row">
+
+            <div class="col text-left">
+                <p>&copy; 2019 Jakub Korczakowski</p>
+            </div>
+
+            <hr class="w-100 clearfix d-md-none">
+
+            <div class="col text-right">
+                proudly powered by <img
+                    src="https://icons.iconarchive.com/icons/bokehlicia/captiva/16/vim-icon.png" alt="Vim icon"
+                    title="Vim"
+                    class="footer-img"/>
+            </div>
+
+        </div>
+    </div>
+
+</footer>
+
+</body>
+</html>

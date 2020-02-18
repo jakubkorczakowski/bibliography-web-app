@@ -1,0 +1,37 @@
+version: '3'
+services:
+  web_front:
+    build:
+      context: .
+      dockerfile: ./Docker/front/Dockerfile
+    ports:
+      - "8080:80"
+    volumes:
+      - ./front_app:/front_app
+    environment:
+      FLASK_ENV: development
+      FLASK_SECRET: FLASK_SECRET
+  web_files:
+    build:
+      context: .
+      dockerfile: ./Docker/files/Dockerfile
+    ports:
+      - "8081:81"
+    volumes:
+      - ./files_app:/files_app
+    environment:
+      FLASK_ENV: development
+      FLASK_SECRET: FLASK_SECRET
+  web_login:
+    build:
+      context: .
+      dockerfile: ./Docker/login/Dockerfile
+    ports:
+      - "8082:82"
+    volumes:
+      - ./login_app:/login_app
+    environment:
+      FLASK_ENV: development
+      FLASK_SECRET: FLASK_SECRET
+  redis:
+    image: "redis:alpine"
