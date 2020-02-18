@@ -1,5 +1,0 @@
-flask
-flask-restplus
-redis
-requests
-flask-cors

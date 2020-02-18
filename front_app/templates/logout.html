@@ -16,6 +16,7 @@
             crossorigin="anonymous"></script>
     <link href='https://fonts.googleapis.com/css?family=Crimson+Pro&subset=latin,latin-ext' rel='stylesheet'
           type='text/css'>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
     <link href="/styles/style.css" rel="stylesheet" type="text/css">
 </head>
 
@@ -66,19 +67,12 @@
         <div class="col-12">
             <br>
             <br>
-            <header>
-                <h1>400</h1>
-            </header>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12 col-lg-6">
             <section>
-                <p>Złe zapytanie.
-                </p>
-                <p>
-                    <strong>Więcej o błędzie:</strong>
-                    <br/>
-                    {{ error }}
-                </p>
-            </section>
-            <section>
+                <h3>Wylogowano pomyślnie</h3>
                 <a href="{{ url_for('index') }}"> Przejdź do strony głównej. </a> <br>
                 <a href="{{ url_for('login') }}"> Przejdź do strony logowania. </a>
             </section>

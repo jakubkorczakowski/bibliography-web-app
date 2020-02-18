@@ -8,9 +8,11 @@ from src.service.author_service import AuthorService
 from src.service.file_service import FileService
 from src.exception.exception import BibliographyAlreadyExistsException, AuthorAlreadyExistsException, \
     AuthorNotFoundByIdException, FileAlreadyExistsException, BibliographyNotFoundByIdException
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, set_access_cookies, get_jwt_identity
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, set_access_cookies, get_jwt_identity, \
+    get_raw_jwt
 import os
 import requests
+from const_config import *
 
 app = Flask(__name__)
 api_app = Api(app=app, version="0.1", title="Bib-Maker Main API", description="REST-full API for bibliography service")
@@ -26,15 +28,18 @@ LIMIT = "limit"
 SECRET_KEY = "FLASK_SECRET"
 SESSION_ID = "my-session-id"
 ACCESS_TOKEN = "access-token"
-TOKEN_EXPIRES_IN_SECONDS = 300
+TOKEN_EXPIRES_IN_SECONDS = 36000
 
-app.config['JWT_SECRET_KEY'] = os.environ.get(SECRET_KEY)
+jwt = JWTManager(app)
+
+app.config['JWT_SECRET_KEY'] = OAUTH_CLIENT_SECRET
 app.secret_key = os.environ.get(SECRET_KEY)
 
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = TOKEN_EXPIRES_IN_SECONDS
 app.config['JWT_TOKEN_LOCATION'] = ('headers', 'cookies')
 app.config['JWT_COOKIE_SECURE'] = True
-jwt = JWTManager(app)
+app.config['JWT_DECODE_AUDIENCE'] = OAUTH_CLIENT_ID
+app.config['JWT_IDENTITY_CLAIM'] = 'sub'
 
 NOT_EXISTING_BIBLIOGRAPHY_ID = 0
 
@@ -145,7 +150,7 @@ class Bibliography(Resource):
     @jwt_required
     def get(self, id):
         try:
-            username = get_jwt_identity()
+            username = get_raw_jwt()['name']
             bib = self.bib_service.get_bib_by_id(id, username)
             return bib.__dict__
 
@@ -158,7 +163,7 @@ class Bibliography(Resource):
     @jwt_required
     def delete(self, id):
         try:
-            username = get_jwt_identity()
+            username = get_raw_jwt()['name']
             bib_id = self.bib_service.del_bib_by_id(id, username)
 
             files = self.file_service.get_all_files(username)
@@ -200,7 +205,7 @@ class BibliographyList(Resource):
     @api_app.doc(responses={200: "OK"})
     @jwt_required
     def get(self):
-        username = get_jwt_identity()
+        username = get_raw_jwt()['name']
 
         start = self.parse_request_arg_or_zero(request, START, "0")
         start = max(1, start)
@@ -223,7 +228,7 @@ class BibliographyList(Resource):
         try:
             bib_req = BibliographyRequest(request)
             author = self.author_service.get_author_by_id(bib_req.author_id)
-            username = get_jwt_identity()
+            username = get_raw_jwt()['name']
             saved_bib_id = self.bib_service.add_bib(bib_req, username)
 
             result = {"message": "Added new bibliography postion", "saved_bib_id": saved_bib_id}
@@ -256,7 +261,7 @@ class FileDownloadID(Resource):
     @jwt_required
     def get(self, id):
         try:
-            username = get_jwt_identity()
+            username = get_raw_jwt()['name']
             file = self.file_service.get_file_by_id(id, username)
             return send_file(file.path_to_file, attachment_filename=file.org_filename, as_attachment=True)
 
@@ -285,7 +290,7 @@ class File(Resource):
     @jwt_required
     def get(self, id):
         try:
-            username = get_jwt_identity()
+            username = get_raw_jwt()['name']
             file = self.file_service.get_file_by_id(id, username)
             return file.__dict__
 
@@ -298,7 +303,7 @@ class File(Resource):
     @jwt_required
     def delete(self, id):
         try:
-            username = get_jwt_identity()
+            username = get_raw_jwt()['name']
             file_id = self.file_service.del_file_by_id(id, username)
 
             return {
@@ -315,7 +320,7 @@ class File(Resource):
     @jwt_required
     def post(self, id):
         try:
-            username = get_jwt_identity()
+            username = get_raw_jwt()['name']
             bib_id = request.json["bibliography_id"]
 
             if bib_id != NOT_EXISTING_BIBLIOGRAPHY_ID:
@@ -354,7 +359,7 @@ class FileList(Resource):
     def post(self):
         try:
             file = request.files["file"]
-            username = get_jwt_identity()
+            username = get_raw_jwt()['name']
             saved_file_id = self.file_service.add_file(file, username)
 
             result = {"message": "Added new file", "saved_file_id": saved_file_id}
@@ -375,7 +380,7 @@ class FileList(Resource):
     @api_app.doc(responses={200: "OK"})
     @jwt_required
     def get(self):
-        username = get_jwt_identity()
+        username = get_raw_jwt()['name']
 
         start = self.parse_request_arg_or_zero(request, START, "0")
         start = max(1, start)

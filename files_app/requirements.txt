@@ -3,3 +3,4 @@ flask-restplus
 redis
 requests
 flask-cors
+werkzeug==0.16.1

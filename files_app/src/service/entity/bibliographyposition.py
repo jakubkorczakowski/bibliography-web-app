@@ -1,6 +1,5 @@
 import json
 
-
 class BibliographyPosition:
     def __init__(self, id, author_id, title, year, username):
         self.id = id

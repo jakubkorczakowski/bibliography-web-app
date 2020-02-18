@@ -35,9 +35,6 @@
             <li class="nav-item">
                 <a class="nav-link" href="{{ url_for('login') }}">Logowanie</a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('register') }}">Rejestracja</a>
-            </li>
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown"
                    aria-haspopup="true" aria-expanded="false">
@@ -97,8 +94,8 @@
                         <li class="list-group-item list-group-item-action">
                             <div class="row">
                                 <div class="col-10 text-left text-break">
-                                    <a href="{{ " https://localhost:8081/file/download/" + file["id"]|string() }}"> {{
-                                    file["org_filename"] }} </a>
+                                    <a href="{{ 'https://localhost:8081/file/download/' + file['id']|string() }}">
+                                        {{ file["org_filename"] }} </a>
                                 </div>
                                 <div class="col-2 text-right">
                                     <a href="{{ url_for(" delete_file", id=file["id"]) }}"> Usuń </a>

@@ -2,7 +2,11 @@ from flask import Flask, request, render_template, redirect, url_for, make_respo
 import json
 import os
 import requests
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, set_access_cookies, get_jwt_identity
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, set_access_cookies, get_jwt_identity, \
+    decode_token, get_raw_jwt
+from authlib.integrations.flask_client import OAuth
+from const_config import *
+from functools import wraps
 
 GET = "GET"
 POST = "POST"
@@ -13,20 +17,33 @@ USER_API_URL = "https://web_login:82/user/"
 FILE_API_URL = "https://web_files:81/file/"
 BIB_API_URL = "https://web_files:81/bibliography-position/"
 AUTHOR_API_URL = "https://web_files:81/author/"
-TOKEN_EXPIRES_IN_SECONDS = 300
+TOKEN_EXPIRES_IN_SECONDS = 36000
 
 NOT_EXISTING_BIBLIOGRAPHY_ID = 0
 
 app = Flask(__name__, static_url_path="")
 jwt = JWTManager(app)
 
-app.config['JWT_SECRET_KEY'] = os.environ.get(SECRET_KEY)
+app.config['JWT_SECRET_KEY'] = OAUTH_CLIENT_SECRET
 app.secret_key = os.environ.get(SECRET_KEY)
 
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = TOKEN_EXPIRES_IN_SECONDS
 app.config['JWT_TOKEN_LOCATION'] = ('headers', 'cookies')
 app.config['JWT_COOKIE_SECURE'] = True
 app.config['JWT_COOKIE_CSRF_PROTECT'] = False
+app.config['JWT_DECODE_AUDIENCE'] = OAUTH_CLIENT_ID
+app.config['JWT_IDENTITY_CLAIM'] = 'sub'
+
+oauth = OAuth(app)
+
+auth0 = oauth.register(
+    "bib-maker-auth0",
+    api_base_url=OAUTH_BASE_URL,
+    client_id=OAUTH_CLIENT_ID,
+    client_secret=OAUTH_CLIENT_SECRET,
+    access_token_url=OAUTH_ACCESS_TOKEN_URL,
+    authorize_url=OAUTH_AUTHORIZE_URL,
+    client_kwargs={"scope": OAUTH_SCOPE})
 
 
 @jwt.unauthorized_loader
@@ -34,76 +51,61 @@ def my_unauthorized_loader_function(callback):
     return render_template("errors/403.html"), 403
 
 
+def authorization_required(f):
+    @wraps(f)
+    def authorization_decorator(*args, **kwds):
+        try:
+            access_cookie = request.cookies[ACCESS_TOKEN_COOKIE]
+            return f(*args, **kwds)
+        except Exception as e:
+            return redirect("/login")
+
+    return authorization_decorator
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
 
 
-@app.route("/logout/", methods=[GET])
-@jwt_required
-def logout():
-    response = make_response(render_template("index.html"))
-    response.delete_cookie(ACCESS_TOKEN_COOKIE)
+@app.route("/login")
+def login():
+    return auth0.authorize_redirect(
+        redirect_uri=OAUTH_CALLBACK_URL,
+        audience="")
+
+
+@app.route("/logout_info")
+def logout_info():
+    response = make_response(render_template("./logout.html"))
+    response.delete_cookie('access_token_cookie')
     return response
 
 
-@app.route("/login/", methods=[GET, POST])
-def login():
-    if (request.method == POST):
-        form_data = request.form.to_dict()
-        url = USER_API_URL + 'login/'
+@app.route("/logout")
+def logout():
+    url_params = "returnTo=" + url_for("logout_info", _external=True)
+    url_params += "&"
+    url_params += "client_id=" + OAUTH_CLIENT_ID
 
-        resp = requests.post(url=url, verify=False, json=form_data)
-        app.logger.debug(resp.status_code)
-
-        if (resp.status_code == 200):
-            access_token = resp.json()["access_token"]
-            response = make_response(render_template("index.html"))
-            set_access_cookies(response, access_token, max_age=TOKEN_EXPIRES_IN_SECONDS)
-            return response
-        elif (resp.status_code == 403):
-            flash("Błędne hasło.")
-            return render_template("login.html")
-        elif (resp.status_code == 400):
-            flash("Błędna nazwa użytkownika.")
-            return render_template("login.html")
-
-    return render_template("login.html")
+    return redirect(auth0.api_base_url + "/v2/logout?" + url_params)
 
 
-@app.route("/register/", methods=[GET, POST])
-def register():
-    if (request.method == POST):
-        form_data = request.form.to_dict()
-        url = USER_API_URL
+@app.route("/callback")
+def oauth_callback():
+    access_token = auth0.authorize_access_token()
 
-        resp = requests.post(url=url, verify=False, json=form_data)
-        app.logger.debug(resp.status_code)
-
-        if (resp.status_code == 200):
-            return render_template("index.html")
-        elif (resp.status_code == 409):
-            flash("Użytkownik już istnieje.")
-            return render_template("registration.html")
-
-    return render_template("registration.html")
-
-
-def get_access_token(access_token):
-    headers = {"Authorization": "Bearer " + access_token}
-
-    url = USER_API_URL + 'login/'
-    resp = requests.get(url=url, verify=False, headers=headers)
-    app.logger.debug(resp.status_code)
-    new_access_token = resp.json()["access_token"]
-    return new_access_token
+    response = make_response(render_template("./index.html"))
+    response.set_cookie('access_token_cookie', access_token['id_token'], max_age=TOKEN_EXPIRES_IN_SECONDS,
+                        httponly=True, secure=True)
+    return response
 
 
 @app.route("/add-file/", methods=[GET, POST])
+@authorization_required
 @jwt_required
 def add_file():
-    old_access_token = request.cookies[ACCESS_TOKEN_COOKIE]
-    access_token = get_access_token(old_access_token)
+    access_token = request.cookies[ACCESS_TOKEN_COOKIE]
 
     if (request.method == POST):
         url = FILE_API_URL + "list"
@@ -117,15 +119,14 @@ def add_file():
             return show_files()
 
     response = make_response(render_template("add_file.html"))
-    set_access_cookies(response, access_token, max_age=TOKEN_EXPIRES_IN_SECONDS)
     return response
 
 
 @app.route("/add-bibliography/", methods=[GET, POST])
+@authorization_required
 @jwt_required
 def add_bibliography():
-    old_access_token = request.cookies[ACCESS_TOKEN_COOKIE]
-    access_token = get_access_token(old_access_token)
+    access_token = request.cookies[ACCESS_TOKEN_COOKIE]
 
     if (request.method == POST):
         form_data = request.form.to_dict()
@@ -163,7 +164,6 @@ def add_bibliography():
         return show_one_bibliography(resp.json()["saved_bib_id"])
 
     response = make_response(render_template("add_bibliography.html"))
-    set_access_cookies(response, access_token, max_age=TOKEN_EXPIRES_IN_SECONDS)
     return response
 
 
@@ -175,36 +175,39 @@ def get_files(access_token, bib_id):
     app.logger.debug(resp.status_code)
 
     files = resp.json()
-    bib_files = []
 
-    for file in files["files"]:
-        if file["bib_id"] == bib_id:
-            bib_files.append(file)
+    if files != None:
+        bib_files = []
 
-    files["files"] = bib_files
+        for file in files["files"]:
+            if file["bib_id"] == bib_id:
+                bib_files.append(file)
+
+        files["files"] = bib_files
+    else:
+        files["files"] = []
 
     return files
 
 
 @app.route("/files/", methods=[GET])
+@authorization_required
 @jwt_required
 def show_files():
-    old_access_token = request.cookies[ACCESS_TOKEN_COOKIE]
-    access_token = get_access_token(old_access_token)
+    access_token = request.cookies[ACCESS_TOKEN_COOKIE]
 
     resp_json = get_files(access_token, NOT_EXISTING_BIBLIOGRAPHY_ID)
 
     response = make_response(render_template("files_list.html", resp_json=resp_json))
-    set_access_cookies(response, access_token, max_age=TOKEN_EXPIRES_IN_SECONDS)
 
     return response
 
 
 @app.route("/bibliography/", methods=[GET])
+@authorization_required
 @jwt_required
 def show_bibliographies():
-    old_access_token = request.cookies[ACCESS_TOKEN_COOKIE]
-    access_token = get_access_token(old_access_token)
+    access_token = request.cookies[ACCESS_TOKEN_COOKIE]
 
     url = BIB_API_URL + "list"
     headers = {"Authorization": "Bearer " + access_token}
@@ -215,16 +218,15 @@ def show_bibliographies():
     resp_json = resp.json()
 
     response = make_response(render_template("bibliographies_list.html", resp_json=resp_json))
-    set_access_cookies(response, access_token, max_age=TOKEN_EXPIRES_IN_SECONDS)
 
     return response
 
 
 @app.route("/bibliography/<int:id>", methods=[GET])
+@authorization_required
 @jwt_required
 def show_one_bibliography(id):
-    old_access_token = request.cookies[ACCESS_TOKEN_COOKIE]
-    access_token = get_access_token(old_access_token)
+    access_token = request.cookies[ACCESS_TOKEN_COOKIE]
 
     url = BIB_API_URL + str(id)
     headers = {"Authorization": "Bearer " + access_token}
@@ -244,30 +246,28 @@ def show_one_bibliography(id):
     response = make_response(
         render_template("bibliography_page.html", resp_json=resp_json, resp_json_author=resp_json_author,
                         resp_json_files=resp_json_files))
-    set_access_cookies(response, access_token, max_age=TOKEN_EXPIRES_IN_SECONDS)
 
     return response
 
 
 @app.route("/bibliography/add-files/<int:id>", methods=[GET])
+@authorization_required
 @jwt_required
 def show_bib_files(id):
-    old_access_token = request.cookies[ACCESS_TOKEN_COOKIE]
-    access_token = get_access_token(old_access_token)
+    access_token = request.cookies[ACCESS_TOKEN_COOKIE]
 
     resp_json_files = get_files(access_token, NOT_EXISTING_BIBLIOGRAPHY_ID)
 
     response = make_response(render_template("files_bib_list.html", resp_json=resp_json_files, bib_id=id))
-    set_access_cookies(response, access_token, max_age=TOKEN_EXPIRES_IN_SECONDS)
 
     return response
 
 
 @app.route("/bibliography/add-files/<int:bib_id>/<int:file_id>/", methods=[GET])
+@authorization_required
 @jwt_required
 def update_file(file_id, bib_id):
-    old_access_token = request.cookies[ACCESS_TOKEN_COOKIE]
-    access_token = get_access_token(old_access_token)
+    access_token = request.cookies[ACCESS_TOKEN_COOKIE]
 
     url = FILE_API_URL + str(file_id)
     json = {"bibliography_id": bib_id}
@@ -282,10 +282,10 @@ def update_file(file_id, bib_id):
 
 
 @app.route("/files/delete/<int:id>")
+@authorization_required
 @jwt_required
 def delete_file(id):
-    old_access_token = request.cookies[ACCESS_TOKEN_COOKIE]
-    access_token = get_access_token(old_access_token)
+    access_token = request.cookies[ACCESS_TOKEN_COOKIE]
 
     url = FILE_API_URL + str(id)
     headers = {"Authorization": "Bearer " + access_token}
@@ -296,10 +296,10 @@ def delete_file(id):
 
 
 @app.route("/bibliography/delete/<int:id>")
+@authorization_required
 @jwt_required
 def delete_bibliography(id):
-    old_access_token = request.cookies[ACCESS_TOKEN_COOKIE]
-    access_token = get_access_token(old_access_token)
+    access_token = request.cookies[ACCESS_TOKEN_COOKIE]
 
     url = BIB_API_URL + str(id)
     headers = {"Authorization": "Bearer " + access_token}
